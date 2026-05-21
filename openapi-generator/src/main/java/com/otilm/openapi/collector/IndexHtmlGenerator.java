@@ -48,7 +48,7 @@ public class IndexHtmlGenerator {
     /**
      * Category names in the order they appear in the JS block.
      */
-    private static final List<String> CATEGORY_ORDER = List.of("core", "connector", "protocol");
+    private static final List<String> CATEGORY_ORDER = List.of("core", "connector", "messaging", "protocol");
 
     /**
      * Maps indexCategory value → JS variable name.
@@ -56,6 +56,7 @@ public class IndexHtmlGenerator {
     private static final Map<String, String> VAR_NAMES = Map.of(
             "core", "coreApis",
             "connector", "connectorApis",
+            "messaging", "messagingApis",
             "protocol", "protocolApis"
     );
 
