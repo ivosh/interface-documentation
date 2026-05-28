@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -168,9 +169,11 @@ public class GroupedOpenApiBuilder {
         // Set document-level security
         openApi.setSecurity(securityRequirements.isEmpty() ? new ArrayList<>() : securityRequirements);
 
-        // If security is empty (security: []), remove all operation-level security
+        // If security is empty (security: []), remove all operation-level security and
+        // strip orphan security scheme definitions from components (they have no references).
         if (securityRequirements.isEmpty()) {
             removeAllOperationSecurity(openApi);
+            openApiSecuritySanitizer.sanitizeSecuritySchemes(openApi, Collections.emptySet());
             log.info("Applied explicit empty security ([]) for group {}", groupConfig.getGroupName());
         } else {
             log.info("Applied explicit security requirements for group {}: {}",

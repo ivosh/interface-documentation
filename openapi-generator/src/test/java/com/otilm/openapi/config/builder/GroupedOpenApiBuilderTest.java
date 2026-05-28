@@ -93,8 +93,51 @@ class GroupedOpenApiBuilderTest {
         Operation getOperation = openApi.getPaths().get("/v1/test").getGet();
         assertNull(getOperation.getSecurity(), "Operation-level security should be removed when document-level is []");
 
-        // And: Sanitizer should NOT be called (explicit security bypasses it)
-        verify(openApiSecuritySanitizer, never()).sanitizeSecuritySchemes(any(), any());
+        // And: Sanitizer is called with empty set to strip orphan security scheme components
+        verify(openApiSecuritySanitizer, times(1)).sanitizeSecuritySchemes(eq(openApi), eq(Collections.emptySet()));
+    }
+
+    @Test
+    void shouldStripSecuritySchemeComponentsWhenEmptySecurityConfigured() {
+        // End-to-end with real sanitizer: security: [] removes orphan scheme definitions
+        // AND preserves root security: [] (required by the security-defined lint rule).
+        GroupedOpenApiBuilder realSanitizerBuilder = new GroupedOpenApiBuilder(
+                infoBuilder, securitySchemeMetadataReader, new OpenApiSecuritySanitizer(), "1.0.0");
+
+        GroupConfiguration groupConfig = new GroupConfiguration();
+        groupConfig.setId("test-group");
+        groupConfig.setGroupName("test");
+        groupConfig.setTitle("Test API");
+        groupConfig.setDescription("Test Description");
+        groupConfig.setInterfaces(new ArrayList<>(List.of("com.example.TestController")));
+        groupConfig.setSecurity(Collections.emptyList());
+
+        OpenAPI openApi = new OpenAPI()
+                .components(new io.swagger.v3.oas.models.Components()
+                        .addSecuritySchemes("BearerJWTAuth", new io.swagger.v3.oas.models.security.SecurityScheme())
+                        .addSecuritySchemes("SessionAuth", new io.swagger.v3.oas.models.security.SecurityScheme()))
+                .paths(new Paths()
+                        .addPathItem("/v1/test", new PathItem()
+                                .get(new Operation()
+                                        .addSecurityItem(new SecurityRequirement().addList("BearerJWTAuth")))));
+
+        when(infoBuilder.buildInfo(anyString(), anyString(), anyString(), any())).thenReturn(new io.swagger.v3.oas.models.info.Info());
+        doNothing().when(infoBuilder).addCommonElements(any(), any(), any());
+
+        try {
+            var m = GroupedOpenApiBuilder.class.getDeclaredMethod(
+                    "customizeOpenApi", OpenAPI.class, GroupConfiguration.class, CommonConfiguration.class);
+            m.setAccessible(true);
+            m.invoke(realSanitizerBuilder, openApi, groupConfig, new CommonConfiguration());
+        } catch (Exception e) {
+            fail("Failed to invoke customizeOpenApi: " + e.getMessage());
+        }
+
+        assertNull(openApi.getComponents().getSecuritySchemes(),
+                "security: [] must strip all security scheme definitions from components");
+        assertNotNull(openApi.getSecurity(),
+                "Root security: [] must not be nullified (required by security-defined lint rule)");
+        assertTrue(openApi.getSecurity().isEmpty(), "Root security must remain an empty list");
     }
 
     @Test

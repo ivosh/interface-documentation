@@ -59,6 +59,30 @@ class OpenApiSecuritySanitizerTest {
     }
 
     @Test
+    void shouldPreserveExplicitlyEmptyGlobalSecurity() {
+        // Global security: [] means "no auth required" — must not be nullified,
+        // unlike a list that had all its schemes filtered out.
+        OpenAPI openApi = new OpenAPI().security(List.of());
+
+        sanitizer.sanitizeSecuritySchemes(openApi, Set.of());
+
+        assertNotNull(openApi.getSecurity(), "Explicit root security: [] must not be removed");
+        assertTrue(openApi.getSecurity().isEmpty(), "Root security must remain an empty list");
+    }
+
+    @Test
+    void shouldNullifyGlobalSecurityWhenAllSchemesFilteredOut() {
+        // A non-empty security list whose schemes are all removed must be nullified (not preserved).
+        OpenAPI openApi = new OpenAPI()
+                .addSecurityItem(new SecurityRequirement().addList("RemovedScheme"));
+
+        sanitizer.sanitizeSecuritySchemes(openApi, Set.of());
+
+        assertNull(openApi.getSecurity(),
+                "Global security referencing only removed schemes must be nullified");
+    }
+
+    @Test
     void shouldRemovePreExistingEmptySecuritySchemesMap() {
         OpenAPI openApi = new OpenAPI()
                 .components(new Components()

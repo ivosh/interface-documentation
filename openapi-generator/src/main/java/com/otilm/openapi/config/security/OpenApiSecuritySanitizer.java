@@ -50,9 +50,15 @@ public class OpenApiSecuritySanitizer {
 
         // 2. Remove references from global security
         if (openApi.getSecurity() != null) {
+            boolean originallyEmpty = openApi.getSecurity().isEmpty();
             var filteredGlobalSecurity = new ArrayList<>(openApi.getSecurity());
             filteredGlobalSecurity.removeIf(secReq -> !isValidSecurityRequirement(secReq, validSchemes));
-            openApi.setSecurity(filteredGlobalSecurity.isEmpty() ? null : filteredGlobalSecurity);
+            // Preserve explicit security: [] — same semantics as operation-level handling above.
+            if (filteredGlobalSecurity.isEmpty() && !originallyEmpty) {
+                openApi.setSecurity(null);
+            } else {
+                openApi.setSecurity(filteredGlobalSecurity);
+            }
         }
 
         // 3. Remove references to deleted schemes from all operations
