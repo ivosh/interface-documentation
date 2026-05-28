@@ -130,7 +130,7 @@ class GroupedOpenApiBuilderTest {
             m.setAccessible(true);
             m.invoke(realSanitizerBuilder, openApi, groupConfig, new CommonConfiguration());
         } catch (Exception e) {
-            fail("Failed to invoke customizeOpenApi: " + e.getMessage());
+            fail("Failed to invoke customizeOpenApi", e);
         }
 
         assertNull(openApi.getComponents().getSecuritySchemes(),
